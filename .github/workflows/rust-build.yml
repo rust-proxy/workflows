@@ -1,27 +1,4 @@
-name: Reusable Build Workflow
-
-on:
-  workflow_call:
-    inputs:
-      rust-toolchain:
-        description: 'Rust toolchain to use'
-        required: false
-        type: string
-        default: 'stable'
-      packages:
-        description: 'Comma-separated list of package names'
-        required: true
-        type: string
-      target-config-file:
-        description: 'Path to the TOML file containing target configurations'
-        required: false
-        type: string
-        default: '.github/target.toml'
-      run-tests:
-        description: 'Whether to run tests (can be overridden)'
-        required: false
-        type: boolean
-        default: true
+name: Build Rust Binary
 
 on:
   workflow_call:
@@ -99,7 +76,7 @@ jobs:
           cargo +nightly fmt --all -- --check
 
       - name: Spell Check Repo
-        uses: crate-ci/typos@v1.43.4
+        uses: crate-ci/typos@v1.44.0
         env:
           CLICOLOR: 1
 
@@ -223,7 +200,7 @@ jobs:
           done
 
       - name: Upload binary artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.release-name || matrix.target }}-binaries
           path: artifacts/
