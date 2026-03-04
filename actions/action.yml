@@ -1,0 +1,5 @@
+name: Reusable Workflow
+
+runs:
+  using: "composite"
+  steps: [] # Placeholder for reusable configuration details
