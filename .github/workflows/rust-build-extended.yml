@@ -1,0 +1,112 @@
+name: Build Rust Binary (extended)
+
+on:
+  workflow_call:
+    inputs:
+      rust-toolchain:
+        description: 'Rust toolchain to use'
+        required: false
+        type: string
+        default: 'stable'
+      packages:
+        description: 'Comma-separated list of package names'
+        required: true
+        type: string
+      target-config-file:
+        description: 'Path to the TOML file containing target configurations'
+        required: false
+        type: string
+        default: '.github/target.toml'
+      run-tests:
+        description: 'Whether to run tests (can be overridden by matrix config)'
+        required: false
+        type: boolean
+        default: true
+      cache-key-prefix:
+        description: 'Prefix for cache key to avoid collisions'
+        required: false
+        type: string
+        default: 'rust-build'
+      rustflags:
+        description: 'Additional RUSTFLAGS to pass to the compiler'
+        required: false
+        type: string
+        default: ''
+      package-name:
+        description: 'Package name for artifacts (env PACKAGE)'
+        required: false
+        type: string
+        default: ''
+      image-name:
+        description: 'Docker image name for docker-image job'
+        required: false
+        type: string
+        default: ''
+      registry:
+        description: 'Container registry'
+        required: false
+        type: string
+        default: 'ghcr.io'
+      enable-nasm:
+        description: 'Whether to run NASM setup'
+        required: false
+        type: boolean
+        default: false
+      retention-days:
+        description: 'Artifact retention days'
+        required: false
+        type: number
+        default: 3
+      postfix:
+        description: 'Binary postfix (.exe etc)'
+        required: false
+        type: string
+        default: ''
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  RUSTC_BOOTSTRAP: "1"
+
+jobs:
+  # Reuse most of the original rust-build implementation but expose extra inputs
+  call-rust-build:
+    uses: ./.github/workflows/rust-build.yml
+    with:
+      rust-toolchain: ${{ inputs.rust-toolchain }}
+      packages: ${{ inputs.packages }}
+      target-config-file: ${{ inputs.target-config-file }}
+      run-tests: ${{ inputs.run-tests }}
+      cache-key-prefix: ${{ inputs.cache-key-prefix }}
+      rustflags: ${{ inputs.rustflags }}
+
+  docker-image:
+    needs: [call-rust-build]
+    if: ${{ inputs.image-name != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Download binaries
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ matrix.release-name || matrix.target }}-binaries
+          path: ./binaries
+      - name: Build and push docker
+        if: ${{ inputs.image-name != '' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: .github/Dockerfile
+          push: true
+          tags: ${{ inputs.registry }}/${{ github.repository_owner }}/${{ inputs.image-name }}:latest
+
+  publish-release:
+    needs: [call-rust-build]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Merge artifacts (noop placeholder)
+        run: echo "release step placeholder"
