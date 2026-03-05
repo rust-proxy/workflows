@@ -73,9 +73,9 @@ jobs:
       - name: Prepare binaries for multi-arch Docker image
         run: |
           mkdir -p ${{ inputs.binary-dir }}
-          cp ./packages/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/bin-amd64
-          cp ./packages/${{ inputs.server-binary-arm64 }} ${{ inputs.binary-dir }}/bin-arm64
-          chmod +x ${{ inputs.binary-dir }}/tuic-server-*
+          cp ./packages/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-amd64 }}
+          cp ./packages/${{ inputs.server-binary-arm64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-arm64 }}
+          chmod +x ${{ inputs.binary-dir }}/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-arm64 }}
 
       #--------------------------------------------------
       # Docker Registry Authentication
