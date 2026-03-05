@@ -110,10 +110,8 @@ jobs:
           submodules: true
           fetch-depth: 1
 
-      - name: Install sccache
-        uses: taiki-e/install-action@v2
-        with:
-          tool: sccache
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Setup SCCache
         run: |
