@@ -155,6 +155,7 @@ jobs:
       #--------------------------------------------------
 
       - name: Run linter
+        if: ${{ github.event_name == 'pull_request' }}
         uses: clechasseur/rs-cargo@v4
         with:
           tool: ${{ matrix.tool }}
@@ -168,7 +169,7 @@ jobs:
       #--------------------------------------------------
       - name: Run tests
         uses: clechasseur/rs-cargo@v4
-        if: ${{ inputs.run-tests != false && !matrix.skip-test }}
+        if: ${{ github.event_name == 'pull_request' && inputs.run-tests != false && !matrix.skip-test }}
         with:
           tool: ${{ matrix.tool }}
           command: test
