@@ -145,6 +145,11 @@ jobs:
         env:
           TARGET: ${{ matrix.target }}
 
+      - name: Setup NASM & env for aws-lc prebuilt
+        if: matrix.nasm == true
+        run: |
+          echo "AWS_LC_SYS_PREBUILT_NASM=1" >> $GITHUB_ENV
+        # install NASM runtime only when needed
       - name: Install NASM
         if: matrix.nasm == true
         uses: ilammy/setup-nasm@v1
