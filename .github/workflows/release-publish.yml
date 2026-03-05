@@ -13,11 +13,6 @@ on:
         required: false
         type: boolean
         default: false
-      force-update-latest:
-        description: 'If true, move the latest tag to the current commit when updating latest'
-        required: false
-        type: boolean
-        default: false
       publish-mode:
         description: 'publish|draft'
         required: false
@@ -48,6 +43,21 @@ jobs:
           merge-multiple: true
 
       #--------------------------------------------------
+      # Tag cleanup (for git-cliff to work correctly)
+      #--------------------------------------------------
+      - name: Delete latest tag (for git-cliff on v* tags)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: git tag -d latest || true
+
+      - name: Delete existing latest release and tag
+        if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --cleanup-tag --yes --repo $GITHUB_REPOSITORY || true
+          git tag latest -f || true
+
+      #--------------------------------------------------
       # Changelog Generation
       #--------------------------------------------------
       - name: Generate changelog
@@ -59,71 +69,32 @@ jobs:
         env:
           GITHUB_REPO: ${{ github.repository }}
 
-      # Ensure jaq is available for JSON processing
-      - name: Install jaq
-        uses: taiki-e/install-action@v2
-        with:
-          tool: jaq
-
       #--------------------------------------------------
-      # Release Publishing (tag-based)
+      # Release Publishing
       #--------------------------------------------------
-      - name: Create and publish release for v* tags
+      - name: Publish stable release
+        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG_NAME: ${{ github.ref_name }}
-        run: |
-          # Create draft release with changelog
-          gh release create "$TAG_NAME" --draft --notes "${{ steps.git-cliff.outputs.content }}"
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: false
+          draft: ${{ inputs.publish-mode == 'draft' }}
+          generate_release_notes: false
+          body: ${{ steps.git-cliff.outputs.content }}
+          files: |
+            packages/*
+            LICENSE*
 
-          # Upload all package files
-          find ./packages -type f -exec gh release upload "$TAG_NAME" {} \;
-
-          # Upload LICENSE file
-          gh release upload "$TAG_NAME" LICENSE
-
-          # Publish the release (change from draft to published)
-          gh release edit "$TAG_NAME" --draft=false
-
-      #--------------------------------------------------
-      # Release Publishing (branch push -> latest)
-      #--------------------------------------------------
-      - name: Optionally manage latest release on branch push
+      - name: Publish latest (nightly) release
+        uses: softprops/action-gh-release@v2
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PUBLISH_MODE: ${{ inputs.publish-mode }}
-        run: |
-          set -euo pipefail
-          OWNER=${GITHUB_REPOSITORY%/*}
-          REPO=${GITHUB_REPOSITORY#*/}
-          CURRENT_SHA=${GITHUB_SHA}
-
-          # Check if 'latest' tag exists
-          if gh api repos/$OWNER/$REPO/git/ref/tags/latest >/dev/null 2>&1; then
-            echo "latest tag exists"
-            # Find release for tag latest
-            RELEASE_JSON=$(gh api repos/$OWNER/$REPO/releases/tags/latest 2>/dev/null || true)
-            RELEASE_ID=$(echo "$RELEASE_JSON" | jaq -r '.id // empty')
-            if [ -n "$RELEASE_ID" ]; then
-              echo "Updating release id $RELEASE_ID"
-              # Update release notes
-              NOTES="${{ steps.git-cliff.outputs.content }}"
-              gh api repos/$OWNER/$REPO/releases/$RELEASE_ID -X PATCH -f body="$NOTES"
-              # Upload assets (overwrite by uploading with same name)
-              for f in packages/*; do gh release upload --clobber latest "$f" || true; done
-              if [ "${{ inputs.force-update-latest }}" = "true" ]; then
-                # Move latest tag to current sha (force update)
-                gh api -X PATCH repos/$OWNER/$REPO/git/refs/tags/latest -f sha=$CURRENT_SHA || gh api repos/$OWNER/$REPO/git/refs -f ref=refs/tags/latest -f sha=$CURRENT_SHA
-              fi
-            else
-              echo "No release found for latest tag; creating one"
-              gh release create latest packages/* -t "latest" -n "${{ steps.git-cliff.outputs.content }}" $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) || true
-            fi
-          else
-            echo "latest tag does not exist; creating tag and release"
-            git tag latest $CURRENT_SHA
-            git push origin refs/tags/latest
-            gh release create latest packages/* -t "latest" -n "${{ steps.git-cliff.outputs.content }}" $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) || true
-          fi
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          prerelease: true
+          draft: ${{ inputs.publish-mode == 'draft' }}
+          generate_release_notes: false
+          body: ${{ steps.git-cliff.outputs.content }}
+          tag_name: "latest"
+          files: |
+            packages/*
+            LICENSE*
