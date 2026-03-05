@@ -67,15 +67,11 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: "*-binaries"
-          path: ./packages
+          path: ${{ inputs.binary-dir }}
           merge-multiple: true
 
-      - name: Prepare binaries for multi-arch Docker image
-        run: |
-          mkdir -p ${{ inputs.binary-dir }}
-          cp ./packages/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-amd64 }}
-          cp ./packages/${{ inputs.server-binary-arm64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-arm64 }}
-          chmod +x ${{ inputs.binary-dir }}/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/${{ inputs.server-binary-arm64 }}
+      - name: Fix binary permissions
+        run: chmod +x ${{ inputs.binary-dir }}/*
 
       #--------------------------------------------------
       # Docker Registry Authentication
