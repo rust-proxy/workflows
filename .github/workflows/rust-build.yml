@@ -212,3 +212,15 @@ jobs:
           path: artifacts/
           if-no-files-found: error
           retention-days: ${{ matrix.retention-days || 3 }}
+
+  tmate:
+    needs: [compile]
+    if: ${{ inputs.enable-tmate && needs.compile.result == "failure" }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+          timeout-minutes: 15
+          limit-access-to-actor: true
