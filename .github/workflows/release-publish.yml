@@ -8,6 +8,21 @@ on:
         required: false
         type: string
         default: '.github/cliff.toml'
+      create-latest-on-push:
+        description: 'When true, create or update a "latest" release on non-tag pushes'
+        required: false
+        type: boolean
+        default: false
+      force-update-latest:
+        description: 'If true, move the latest tag to the current commit when updating latest'
+        required: false
+        type: boolean
+        default: false
+      publish-mode:
+        description: 'publish|draft'
+        required: false
+        type: string
+        default: 'publish'
 
 jobs:
   release:
@@ -45,9 +60,9 @@ jobs:
           GITHUB_REPO: ${{ github.repository }}
 
       #--------------------------------------------------
-      # Release Publishing
+      # Release Publishing (tag-based)
       #--------------------------------------------------
-      - name: Create and publish release
+      - name: Create and publish release for v* tags
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,12 +70,54 @@ jobs:
         run: |
           # Create draft release with changelog
           gh release create "$TAG_NAME" --draft --notes "${{ steps.git-cliff.outputs.content }}"
-          
+
           # Upload all package files
           find ./packages -type f -exec gh release upload "$TAG_NAME" {} \;
-          
+
           # Upload LICENSE file
           gh release upload "$TAG_NAME" LICENSE
-          
+
           # Publish the release (change from draft to published)
           gh release edit "$TAG_NAME" --draft=false
+
+      #--------------------------------------------------
+      # Release Publishing (branch push -> latest)
+      #--------------------------------------------------
+      - name: Optionally manage latest release on branch push
+        if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUBLISH_MODE: ${{ inputs.publish-mode }}
+        run: |
+          set -euo pipefail
+          OWNER=${GITHUB_REPOSITORY%/*}
+          REPO=${GITHUB_REPOSITORY#*/}
+          CURRENT_SHA=${GITHUB_SHA}
+
+          # Check if 'latest' tag exists
+          if gh api repos/$OWNER/$REPO/git/ref/tags/latest >/dev/null 2>&1; then
+            echo "latest tag exists"
+            # Find release for tag latest
+            RELEASE_JSON=$(gh api repos/$OWNER/$REPO/releases/tags/latest 2>/dev/null || true)
+            RELEASE_ID=$(echo "$RELEASE_JSON" | jaq -r '.id // empty')
+            if [ -n "$RELEASE_ID" ]; then
+              echo "Updating release id $RELEASE_ID"
+              # Update release notes
+              NOTES=$(git log --pretty=format:"%h %s" -n 20)
+              gh api repos/$OWNER/$REPO/releases/$RELEASE_ID -X PATCH -f body="Updated release for commit $CURRENT_SHA\n\n$NOTES"
+              # Upload assets (overwrite by uploading with same name)
+              for f in packages/*; do gh release upload --clobber $RELEASE_ID "$f" || true; done
+              if [ "${{ inputs.force-update-latest }}" = "true" ]; then
+                # Move latest tag to current sha (force update)
+                gh api -X PATCH repos/$OWNER/$REPO/git/refs/tags/latest -f sha=$CURRENT_SHA || gh api repos/$OWNER/$REPO/git/refs -f ref=refs/tags/latest -f sha=$CURRENT_SHA
+              fi
+            else
+              echo "No release found for latest tag; creating one"
+              gh release create latest packages/* -t "latest" -n "Automated latest release for $CURRENT_SHA" $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) || true
+            fi
+          else
+            echo "latest tag does not exist; creating tag and release"
+            git tag latest $CURRENT_SHA
+            git push origin refs/tags/latest
+            gh release create latest packages/* -t "latest" -n "Automated latest release for $CURRENT_SHA" $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) || true
+          fi
