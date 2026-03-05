@@ -59,6 +59,12 @@ jobs:
         env:
           GITHUB_REPO: ${{ github.repository }}
 
+      # Ensure jaq is available for JSON processing
+      - name: Install jaq
+        uses: taiki-e/install-action@v2
+        with:
+          tool: jaq
+
       #--------------------------------------------------
       # Release Publishing (tag-based)
       #--------------------------------------------------
