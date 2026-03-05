@@ -112,7 +112,7 @@ jobs:
               NOTES=$(git log --pretty=format:"%h %s" -n 20)
               gh api repos/$OWNER/$REPO/releases/$RELEASE_ID -X PATCH -f body="Updated release for commit $CURRENT_SHA\n\n$NOTES"
               # Upload assets (overwrite by uploading with same name)
-              for f in packages/*; do gh release upload --clobber $RELEASE_ID "$f" || true; done
+              for f in packages/*; do gh release upload --clobber latest "$f" || true; done
               if [ "${{ inputs.force-update-latest }}" = "true" ]; then
                 # Move latest tag to current sha (force update)
                 gh api -X PATCH repos/$OWNER/$REPO/git/refs/tags/latest -f sha=$CURRENT_SHA || gh api repos/$OWNER/$REPO/git/refs -f ref=refs/tags/latest -f sha=$CURRENT_SHA
