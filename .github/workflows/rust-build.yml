@@ -213,12 +213,8 @@ jobs:
           if-no-files-found: error
           retention-days: ${{ matrix.retention-days || 3 }}
 
-  tmate:
-    needs: [compile]
-    if: ${{ inputs.enable-tmate && needs.compile.result == "failure" }}
-    runs-on: ubuntu-latest
-    steps:
       - name: Setup tmate session
+        if: ${{ inputs.enable-tmate && failure() }}
         uses: mxschmitt/action-tmate@v3
         with:
           detached: true
