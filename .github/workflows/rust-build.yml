@@ -188,37 +188,29 @@ jobs:
           CROSS_CONTAINER_OPTS: "--network host"
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
 
-      - name: Build release binaries
-        id: build
+      - name: Prepare package args
+        id: pkgargs
         shell: bash
         run: |
-          set -euo pipefail
           IFS=',' read -ra PACKAGES <<< "${{ inputs.packages }}"
           PKG_ARGS=""
           if [ -n "${PACKAGES[0]}" ]; then
             for p in "${PACKAGES[@]}"; do
-              # trim whitespace around package entries
               p_trimmed=$(echo "$p" | xargs)
               if [ -n "$p_trimmed" ]; then
-                PKG_ARGS+=("--package" "$p_trimmed")
+                PKG_ARGS="$PKG_ARGS --package $p_trimmed"
               fi
             done
-            BUILD_CMD=(cargo build --release --target "${{ matrix.target }}" "${PKG_ARGS[@]}" --timings)
-          else
-            # no packages specified, build whole workspace
-            BUILD_CMD=(cargo build --workspace --release --target "${{ matrix.target }}" --timings)
           fi
-          # include build-std if requested
-          if [ "${{ matrix.build-std }}" = "true" ]; then
-            BUILD_CMD+=( -Z build-std=std,panic_abort )
-          fi
-          # append extra args
-          if [ -n "${{ matrix.extra-args }}" ]; then
-            BUILD_CMD+=( ${{ matrix.extra-args }} )
-          fi
+          echo "PKG_ARGS=$PKG_ARGS" >> $GITHUB_OUTPUT
 
-          echo "Running: ${BUILD_CMD[*]}"
-          RUSTFLAGS="${{ matrix.rustflags }} ${{ inputs.rustflags }}" CROSS_BUILD_ZIG="${{ matrix.zig }}" "${BUILD_CMD[@]}"
+      - name: Build release binaries
+        id: build
+        uses: clechasseur/rs-cargo@v4
+        with:
+          tool: ${{ matrix.tool }}
+          command: build
+          args: ${{ steps.pkgargs.outputs.PKG_ARGS }} --release --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} --timings
         env:
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
           CROSS_BUILD_ZIG: ${{ matrix.zig }}
