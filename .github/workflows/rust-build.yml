@@ -54,11 +54,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install yj tool
+      - name: Install toml2json via cargo-binstall
         run: |
-          # Install yj for TOML to JSON conversion
-          curl -fsSL https://github.com/sclevine/yj/releases/latest/download/yj-linux-amd64 -o /usr/local/bin/yj
-          chmod +x /usr/local/bin/yj
+          # Install cargo-binstall and use it to install toml2json
+          curl -sSf https://git.io/cargo-binstall | sh -s -- -y
+          ~/.cargo/bin/cargo-binstall --no-confirm woodruffw/toml2json
 
       - name: Parse TOML configuration
         id: parse_config
@@ -67,7 +67,7 @@ jobs:
             echo "Error: Target configuration file not found at ${{ inputs.target-config-file }}"
             exit 1
           fi
-          TARGETS_JSON=$(cat ${{ inputs.target-config-file }} | yj -tj | jq -c '.target')
+          TARGETS_JSON=$(~/.cargo/bin/toml2json ${{ inputs.target-config-file }} | jq -c '.target')
           echo "targets=$TARGETS_JSON" >> $GITHUB_OUTPUT
 
       - name: Setup Rust toolchain
