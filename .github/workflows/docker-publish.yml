@@ -12,7 +12,7 @@ on:
         description: 'Base name of the Docker image'
         required: false
         type: string
-        default: 'tuic-server'
+        default: 'bin'
       platforms:
         description: 'Platforms to build for'
         required: false
@@ -27,12 +27,12 @@ on:
         description: 'Path to amd64 server binary'
         required: false
         type: string
-        default: 'tuic-server-x86_64-linux-musl'
+        default: 'bin-x86_64-linux-musl'
       server-binary-arm64:
         description: 'Path to arm64 server binary'
         required: false
         type: string
-        default: 'tuic-server-aarch64-linux-musl'
+        default: 'bin-aarch64-linux-musl'
     secrets:
       dockerhub-username:
         description: 'Docker Hub username'
@@ -73,8 +73,8 @@ jobs:
       - name: Prepare binaries for multi-arch Docker image
         run: |
           mkdir -p ${{ inputs.binary-dir }}
-          cp ./packages/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/tuic-server-amd64
-          cp ./packages/${{ inputs.server-binary-arm64 }} ${{ inputs.binary-dir }}/tuic-server-arm64
+          cp ./packages/${{ inputs.server-binary-amd64 }} ${{ inputs.binary-dir }}/bin-amd64
+          cp ./packages/${{ inputs.server-binary-arm64 }} ${{ inputs.binary-dir }}/bin-arm64
           chmod +x ${{ inputs.binary-dir }}/tuic-server-*
 
       #--------------------------------------------------
