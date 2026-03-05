@@ -37,8 +37,8 @@ on:
         required: false
         type: boolean
         default: false
-      run-clippy-tests-on-pr:
-        description: 'If true, run clippy and tests only on pull_request events (default: false)'
+      only-clippy-tests-on-pr:
+        description: 'If true, run clippy and tests only on pull_request events. If false, run clippy/tests on any event.'
         required: false
         type: boolean
         default: false
@@ -160,7 +160,7 @@ jobs:
       #--------------------------------------------------
 
       - name: Run linter
-        if: ${{ inputs.run-clippy-tests-on-pr && github.event_name == 'pull_request' }}
+        if: ${{ (inputs.only-clippy-tests-on-pr && github.event_name == 'pull_request') || (!inputs.only-clippy-tests-on-pr) }}
         uses: clechasseur/rs-cargo@v4
         with:
           tool: ${{ matrix.tool }}
@@ -174,7 +174,7 @@ jobs:
       #--------------------------------------------------
       - name: Run tests
         uses: clechasseur/rs-cargo@v4
-        if: ${{ inputs.run-clippy-tests-on-pr && github.event_name == 'pull_request' && inputs.run-tests != false && !matrix.skip-test }}
+        if: ${{ ((inputs.only-clippy-tests-on-pr && github.event_name == 'pull_request') || (!inputs.only-clippy-tests-on-pr)) && inputs.run-tests != false && !matrix.skip-test }}
         with:
           tool: ${{ matrix.tool }}
           command: test
