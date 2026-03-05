@@ -57,6 +57,10 @@ jobs:
       - name: Install toml2json
         uses: taiki-e/install-action@toml2json
 
+      - name: Install jaq (jq alternative)
+        run: |
+          cargo install --git https://github.com/01mf02/jaq.git --locked
+
       - name: Parse TOML configuration
         id: parse_config
         run: |
@@ -64,7 +68,7 @@ jobs:
             echo "Error: Target configuration file not found at ${{ inputs.target-config-file }}"
             exit 1
           fi
-          TARGETS_JSON=$(toml2json ${{ inputs.target-config-file }} | jq -c '.target')
+          TARGETS_JSON=$(toml2json ${{ inputs.target-config-file }} | jaq -c '.target')
           echo "targets=$TARGETS_JSON" >> $GITHUB_OUTPUT
 
       - name: Setup Rust toolchain
