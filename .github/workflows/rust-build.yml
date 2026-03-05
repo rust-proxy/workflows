@@ -32,6 +32,11 @@ on:
         required: false
         type: string
         default: ''
+      enable-tmate:
+        description: 'Enable tmate session on failure for debugging'
+        required: false
+        type: boolean
+        default: false
 
 defaults:
   run:
