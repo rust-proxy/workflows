@@ -150,3 +150,5 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BINARY_DIR=${{ inputs.binary-dir }}
+            SERVER_BINARY_AMD64=${{ inputs.server-binary-amd64 }}
+            SERVER_BINARY_ARM64=${{ inputs.server-binary-arm64 }}
