@@ -105,23 +105,23 @@ jobs:
       - name: Configure Docker image tags
         id: docker_tags
         run: |
-          if [[ $GITHUB_REF == refs/heads/main ]] || [[ $GITHUB_REF == refs/pull/*/merge ]]; then
-            # Development build
-            echo "GHCR_VERSION_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:0.0.0" >> $GITHUB_OUTPUT
-            echo "GHCR_LATEST_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest" >> $GITHUB_OUTPUT
-            if [ "${{ steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB }}" == "true" ]; then
-              DOCKERHUB_REPO="${{ secrets.dockerhub-username }}/${{ inputs.image-name }}"
-              echo "DOCKERHUB_VERSION_TAG=${DOCKERHUB_REPO}:0.0.0" >> $GITHUB_OUTPUT
-              echo "DOCKERHUB_LATEST_TAG=${DOCKERHUB_REPO}:latest" >> $GITHUB_OUTPUT
-            fi
-          else
-            # Release build
+          if [[ $GITHUB_REF == refs/tags/v* ]]; then
+            # Release build (v-prefixed tag)
             VERSION=${GITHUB_REF#refs/tags/v}
             echo "GHCR_VERSION_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:${VERSION}" >> $GITHUB_OUTPUT
             echo "GHCR_LATEST_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest" >> $GITHUB_OUTPUT
             if [ "${{ steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB }}" == "true" ]; then
               DOCKERHUB_REPO="${{ secrets.dockerhub-username }}/${{ inputs.image-name }}"
               echo "DOCKERHUB_VERSION_TAG=${DOCKERHUB_REPO}:${VERSION}" >> $GITHUB_OUTPUT
+              echo "DOCKERHUB_LATEST_TAG=${DOCKERHUB_REPO}:latest" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Development build (push, PR, or non-v tag)
+            echo "GHCR_VERSION_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:0.0.0" >> $GITHUB_OUTPUT
+            echo "GHCR_LATEST_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest" >> $GITHUB_OUTPUT
+            if [ "${{ steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB }}" == "true" ]; then
+              DOCKERHUB_REPO="${{ secrets.dockerhub-username }}/${{ inputs.image-name }}"
+              echo "DOCKERHUB_VERSION_TAG=${DOCKERHUB_REPO}:0.0.0" >> $GITHUB_OUTPUT
               echo "DOCKERHUB_LATEST_TAG=${DOCKERHUB_REPO}:latest" >> $GITHUB_OUTPUT
             fi
           fi
