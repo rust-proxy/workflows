@@ -197,10 +197,13 @@ jobs:
           PKG_ARGS=""
           if [ -n "${PACKAGES[0]}" ]; then
             for p in "${PACKAGES[@]}"; do
-              # allow glob patterns; pass as --package "pattern"
-              PKG_ARGS+=" --package $p"
+              # trim whitespace around package entries
+              p_trimmed=$(echo "$p" | xargs)
+              if [ -n "$p_trimmed" ]; then
+                PKG_ARGS+=("--package" "$p_trimmed")
+              fi
             done
-            BUILD_CMD=(cargo build --release --target "${{ matrix.target }}" ${PKG_ARGS} --timings)
+            BUILD_CMD=(cargo build --release --target "${{ matrix.target }}" "${PKG_ARGS[@]}" --timings)
           else
             # no packages specified, build whole workspace
             BUILD_CMD=(cargo build --workspace --release --target "${{ matrix.target }}" --timings)
