@@ -54,12 +54,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Install toml2json
-        uses: taiki-e/install-action@toml2json
-
-      - name: Install jaq (jq alternative)
-        run: |
-          cargo install --git https://github.com/01mf02/jaq.git --locked
+      - name: Install toml2json and jaq
+        uses: taiki-e/install-action@v2
+        with:
+          tool: toml2json,jaq
 
       - name: Parse TOML configuration
         id: parse_config
