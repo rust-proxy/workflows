@@ -200,6 +200,7 @@ jobs:
           done
 
       - name: Upload binary artifacts
+        if: ${{ matrix.skip-upload != true }}
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.release-name || matrix.target }}-binaries
