@@ -73,28 +73,25 @@ jobs:
       # Release Publishing
       #--------------------------------------------------
       - name: Publish stable release
-        uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/v')
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          prerelease: false
-          draft: ${{ inputs.publish-mode == 'draft' }}
-          generate_release_notes: false
-          body: ${{ steps.git-cliff.outputs.content }}
-          files: |
-            packages/*
-            LICENSE*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG_NAME" \
+            --title "$TAG_NAME" \
+            --notes "${{ steps.git-cliff.outputs.content }}" \
+            $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
+            packages/* LICENSE*
 
       - name: Publish latest (nightly) release
-        uses: softprops/action-gh-release@v2
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          prerelease: true
-          draft: ${{ inputs.publish-mode == 'draft' }}
-          generate_release_notes: false
-          body: ${{ steps.git-cliff.outputs.content }}
-          tag_name: "latest"
-          files: |
-            packages/*
-            LICENSE*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest \
+            --title "latest" \
+            --prerelease \
+            --notes "${{ steps.git-cliff.outputs.content }}" \
+            $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
+            packages/* LICENSE*
