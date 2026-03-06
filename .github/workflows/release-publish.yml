@@ -43,24 +43,14 @@ jobs:
           merge-multiple: true
 
       #--------------------------------------------------
-      # Tag cleanup (for git-cliff to work correctly)
+      # Changelog Generation
       #--------------------------------------------------
-      - name: Delete latest tag (for git-cliff on v* tags)
+      - name: Delete latest tag (for git-cliff)
         if: startsWith(github.ref, 'refs/tags/v')
         run: git tag -d latest || true
 
-      - name: Delete existing latest release and tag
-        if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete latest --cleanup-tag --yes --repo $GITHUB_REPOSITORY || true
-          git tag latest -f || true
-
-      #--------------------------------------------------
-      # Changelog Generation
-      #--------------------------------------------------
       - name: Generate changelog
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: orhun/git-cliff-action@v4
         id: git-cliff
         with:
@@ -84,6 +74,12 @@ jobs:
             $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
             packages/* LICENSE*
 
+      - name: Delete existing latest release and tag
+        if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete latest --cleanup-tag --yes --repo $GITHUB_REPOSITORY || true
+
       - name: Publish latest (nightly) release
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
         env:
@@ -92,6 +88,6 @@ jobs:
           gh release create latest \
             --title "latest" \
             --prerelease \
-            --notes "${{ steps.git-cliff.outputs.content }}" \
+            --notes "Automated nightly release for ${{ github.sha }}" \
             $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
             packages/* LICENSE*
