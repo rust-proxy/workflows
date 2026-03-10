@@ -42,10 +42,6 @@ on:
         required: false
         type: boolean
         default: false
-    secrets:
-      sentry-dsn:
-        description: 'Sentry DSN for error reporting'
-        required: false
 
 defaults:
   run:
@@ -123,12 +119,6 @@ jobs:
         run: |
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-
-      - name: Setup Sentry DSN
-        run: |
-          if [ -n "${{ secrets.sentry-dsn }}" ]; then
-            echo "SENTRY_DSN=${{ secrets.sentry-dsn }}" >> $GITHUB_ENV
-          fi
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
