@@ -49,6 +49,8 @@ defaults:
 
 env:
   RUSTC_BOOTSTRAP: "1"
+  RUST_LOG: "clash_lib=TRACE"
+  RUST_TOOLCHAIN: "stable"
 
 jobs:
   prepare:
