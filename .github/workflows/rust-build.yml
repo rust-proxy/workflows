@@ -53,7 +53,6 @@ defaults:
 
 env:
   RUSTC_BOOTSTRAP: "1"
-  RUST_LOG: "clash_lib=TRACE"
   RUST_TOOLCHAIN: "stable"
 
 jobs:
@@ -119,10 +118,11 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
 
-      - name: Setup SCCache
+      - name: Setup SCCache & AWS-LC-RS prebuilt NASM objects
         run: |
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "AWS_LC_SYS_PREBUILT_NASM=1" >> $GITHUB_ENV
 
       - name: Setup Sentry DSN
         run: |
@@ -156,15 +156,6 @@ jobs:
           cargo install cross --git https://github.com/cross-rs/cross --force
         env:
           TARGET: ${{ matrix.target }}
-
-      - name: Setup NASM & env for aws-lc prebuilt
-        if: matrix.nasm == true
-        run: |
-          echo "AWS_LC_SYS_PREBUILT_NASM=1" >> $GITHUB_ENV
-        # install NASM runtime only when needed
-      - name: Install NASM
-        if: matrix.nasm == true
-        uses: ilammy/setup-nasm@v1
 
       - name: Print build information
         run: |
@@ -241,6 +232,8 @@ jobs:
             target_file="artifacts/${package}-${{ matrix.release-name || matrix.target }}${{ matrix.postfix }}"
             cp "$source_file" "$target_file"
           done
+          mkdir -p timings
+          cp target/cargo-timings/cargo-timing.html timings/timings-${{ matrix.release-name || matrix.target }}.html
 
       - name: Upload binary artifacts
         if: ${{ matrix.skip-upload != true }}
@@ -249,7 +242,15 @@ jobs:
           name: ${{ matrix.release-name || matrix.target }}-binaries
           path: artifacts/
           if-no-files-found: error
-          retention-days: ${{ matrix.retention-days || 3 }}
+          retention-days: ${{ matrix.retention-days || 1 }}
+
+      - name: Upload timings
+        if: ${{ matrix.skip-upload != true }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.release-name || matrix.target }}-timings
+          path: timings/
+          retention-days: ${{ matrix.retention-days || 1 }}
 
       - name: Setup tmate session
         if: ${{ inputs.enable-tmate && failure() }}
@@ -258,3 +259,15 @@ jobs:
           detached: true
           timeout-minutes: 15
           limit-access-to-actor: true
+
+  post:
+    needs: compile
+    permissions:
+      contents: write
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/upload-artifact/merge@v4
+        with:
+          name: timings
+          pattern: "*-timings"
+          delete-merged: true
