@@ -3,6 +3,16 @@ name: Build and Publish Docker Image
 on:
   workflow_call:
     inputs:
+      registrys:
+        description: 'List of registries to login and push, format: username:password@registry (one per line). GHCR is always included automatically.'
+        required: false
+        type: string
+        default: ''
+      disable-ghcr:
+        description: 'Set to true to skip GHCR login and exclude GHCR tags'
+        required: false
+        type: boolean
+        default: false
       docker-file:
         description: 'Path to Dockerfile'
         required: false
@@ -33,13 +43,6 @@ on:
         required: false
         type: string
         default: 'bin-aarch64-linux-musl'
-    secrets:
-      dockerhub-username:
-        description: 'Docker Hub username'
-        required: false
-      dockerhub-token:
-        description: 'Docker Hub token'
-        required: false
 
 jobs:
   docker:
@@ -76,28 +79,28 @@ jobs:
       #--------------------------------------------------
       # Docker Registry Authentication
       #--------------------------------------------------
-      - name: Check Docker Hub credentials
-        id: check_dockerhub
+      - name: Login to registries
         run: |
-          if [ -n "${{ secrets.dockerhub-username }}" ]; then
-            echo "PUBLISH_DOCKERHUB=true" >> $GITHUB_OUTPUT
-          else
-            echo "PUBLISH_DOCKERHUB=false" >> $GITHUB_OUTPUT
+          # Login to GHCR unless disabled
+          if [ "${{ inputs.disable-ghcr }}" != "true" ]; then
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+              -u "${{ github.repository_owner }}" --password-stdin
           fi
 
-      - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Login to Docker Hub
-        if: steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB == 'true'
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.dockerhub-username }}
-          password: ${{ secrets.dockerhub-token }}
+          # Login to additional registries from inputs.registrys
+          while IFS= read -r line; do
+            # Skip empty lines
+            [[ -z "$line" ]] && continue
+            # Parse username:password@registry
+            registry="${line##*@}"
+            userpass="${line%@*}"
+            username="${userpass%%:*}"
+            password="${userpass#*:}"
+            echo "Logging in to ${registry}..."
+            echo "${password}" | docker login "${registry}" -u "${username}" --password-stdin
+          done <<'REGISTRYS_EOF'
+          ${{ inputs.registrys }}
+          REGISTRYS_EOF
 
       #--------------------------------------------------
       # Docker Tag Management
@@ -105,26 +108,41 @@ jobs:
       - name: Configure Docker image tags
         id: docker_tags
         run: |
+          # Build GHCR tags
           if [[ $GITHUB_REF == refs/tags/v* ]]; then
-            # Release build (v-prefixed tag)
             VERSION=${GITHUB_REF#refs/tags/v}
-            echo "GHCR_VERSION_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:${VERSION}" >> $GITHUB_OUTPUT
-            echo "GHCR_LATEST_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest" >> $GITHUB_OUTPUT
-            if [ "${{ steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB }}" == "true" ]; then
-              DOCKERHUB_REPO="${{ secrets.dockerhub-username }}/${{ inputs.image-name }}"
-              echo "DOCKERHUB_VERSION_TAG=${DOCKERHUB_REPO}:${VERSION}" >> $GITHUB_OUTPUT
-              echo "DOCKERHUB_LATEST_TAG=${DOCKERHUB_REPO}:latest" >> $GITHUB_OUTPUT
-            fi
           else
-            # Development build (push, PR, or non-v tag)
-            echo "GHCR_VERSION_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:0.0.0" >> $GITHUB_OUTPUT
-            echo "GHCR_LATEST_TAG=ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest" >> $GITHUB_OUTPUT
-            if [ "${{ steps.check_dockerhub.outputs.PUBLISH_DOCKERHUB }}" == "true" ]; then
-              DOCKERHUB_REPO="${{ secrets.dockerhub-username }}/${{ inputs.image-name }}"
-              echo "DOCKERHUB_VERSION_TAG=${DOCKERHUB_REPO}:0.0.0" >> $GITHUB_OUTPUT
-              echo "DOCKERHUB_LATEST_TAG=${DOCKERHUB_REPO}:latest" >> $GITHUB_OUTPUT
-            fi
+            VERSION="0.0.0"
           fi
+
+          TAGS=""
+
+          # Add GHCR tags unless disabled
+          if [ "${{ inputs.disable-ghcr }}" != "true" ]; then
+            TAGS="ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:${VERSION}"
+            TAGS+=$'\n'"ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest"
+          fi
+
+          # Build extra registry tags from inputs.registrys
+          while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            registry="${line##*@}"
+            username="${line%%:*}"
+            if [ -n "$TAGS" ]; then
+              TAGS+=$'\n'
+            fi
+            TAGS+="${registry}/${username}/${{ inputs.image-name }}:${VERSION}"
+            TAGS+=$'\n'"${registry}/${username}/${{ inputs.image-name }}:latest"
+          done <<'REGISTRYS_EOF'
+          ${{ inputs.registrys }}
+          REGISTRYS_EOF
+
+          # Write multi-line output
+          {
+            echo "TAGS<<EOF"
+            echo "${TAGS}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       #--------------------------------------------------
       # Docker Build & Push
@@ -136,11 +154,7 @@ jobs:
           file: ${{ inputs.docker-file }}
           platforms: ${{ inputs.platforms }}
           push: ${{ startsWith(github.ref, 'refs/tags/v') }}
-          tags: |
-            ${{ steps.docker_tags.outputs.GHCR_VERSION_TAG }}
-            ${{ steps.docker_tags.outputs.GHCR_LATEST_TAG }}
-            ${{ steps.docker_tags.outputs.DOCKERHUB_VERSION_TAG }}
-            ${{ steps.docker_tags.outputs.DOCKERHUB_LATEST_TAG }}
+          tags: ${{ steps.docker_tags.outputs.TAGS }}
           provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
