@@ -3,11 +3,6 @@ name: Build and Publish Docker Image
 on:
   workflow_call:
     inputs:
-      registrys:
-        description: 'List of registries to login and push, format: username:password@registry (one per line). GHCR is always included automatically.'
-        required: false
-        type: string
-        default: ''
       disable-ghcr:
         description: 'Set to true to skip GHCR login and exclude GHCR tags'
         required: false
@@ -43,6 +38,10 @@ on:
         required: false
         type: string
         default: 'bin-aarch64-linux-musl'
+    secrets:
+      registrys:
+        description: 'List of registries to login and push, format: username:password@registry (one per line). GHCR is always included automatically.'
+        required: false
 
 jobs:
   docker:
@@ -87,7 +86,7 @@ jobs:
               -u "${{ github.repository_owner }}" --password-stdin
           fi
 
-          # Login to additional registries from inputs.registrys
+          # Login to additional registries from secrets.registrys
           while IFS= read -r line; do
             # Skip empty lines
             [[ -z "$line" ]] && continue
@@ -99,7 +98,7 @@ jobs:
             echo "Logging in to ${registry}..."
             echo "${password}" | docker login "${registry}" -u "${username}" --password-stdin
           done <<'REGISTRYS_EOF'
-          ${{ inputs.registrys }}
+          ${{ secrets.registrys }}
           REGISTRYS_EOF
 
       #--------------------------------------------------
@@ -123,7 +122,7 @@ jobs:
             TAGS+=$'\n'"ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest"
           fi
 
-          # Build extra registry tags from inputs.registrys
+          # Build extra registry tags from secrets.registrys
           while IFS= read -r line; do
             [[ -z "$line" ]] && continue
             registry="${line##*@}"
@@ -134,7 +133,7 @@ jobs:
             TAGS+="${registry}/${username}/${{ inputs.image-name }}:${VERSION}"
             TAGS+=$'\n'"${registry}/${username}/${{ inputs.image-name }}:latest"
           done <<'REGISTRYS_EOF'
-          ${{ inputs.registrys }}
+          ${{ secrets.registrys }}
           REGISTRYS_EOF
 
           # Write multi-line output

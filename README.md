@@ -88,6 +88,7 @@ jobs:
       image-name: 'clash-rs'
       server-binary-amd64: 'clash-rs-x86_64-unknown-linux-musl'
       server-binary-arm64: 'clash-rs-aarch64-unknown-linux-musl'
+    secrets:
       registrys: |
         myuser:${{ secrets.DOCKERHUB_TOKEN }}@docker.io
         myuser:${{ secrets.QUAY_TOKEN }}@quay.io
@@ -99,7 +100,6 @@ jobs:
 
 | Name                  | Description                                                        | Type    | Required | Default                     |
 | --------------------- | ------------------------------------------------------------------ | ------- | -------- | --------------------------- |
-| `registrys`           | Newline-separated list of registries: `username:password@registry` | string  | No       | `''`                        |
 | `disable-ghcr`        | Set to `true` to skip GHCR login and exclude GHCR tags             | boolean | No       | `false`                     |
 | `docker-file`         | Path to the `Dockerfile`.                                          | string  | No       | `.github/Dockerfile`        |
 | `image-name`          | The base name for the Docker image.                                | string  | No       | `bin`                       |
@@ -107,3 +107,9 @@ jobs:
 | `binary-dir`          | The directory where downloaded binary artifacts are stored.        | string  | No       | `./docker-bins`             |
 | `server-binary-amd64` | The filename of the amd64 binary.                                  | string  | No       | `bin-x86_64-linux-musl`     |
 | `server-binary-arm64` | The filename of the arm64 binary.                                  | string  | No       | `bin-aarch64-linux-musl`    |
+
+#### Secrets
+
+| Name        | Description                                                                      | Required |
+| ----------- | -------------------------------------------------------------------------------- | -------- |
+| `registrys` | Newline-separated list of registries: `username:password@registry`               | No       |
