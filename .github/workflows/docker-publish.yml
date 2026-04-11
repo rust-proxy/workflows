@@ -8,6 +8,11 @@ on:
         required: false
         type: string
         default: ''
+      disable-ghcr:
+        description: 'Set to true to skip GHCR login and exclude GHCR tags'
+        required: false
+        type: boolean
+        default: false
       docker-file:
         description: 'Path to Dockerfile'
         required: false
@@ -76,9 +81,11 @@ jobs:
       #--------------------------------------------------
       - name: Login to registries
         run: |
-          # Always login to GHCR
-          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
-            -u "${{ github.repository_owner }}" --password-stdin
+          # Login to GHCR unless disabled
+          if [ "${{ inputs.disable-ghcr }}" != "true" ]; then
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+              -u "${{ github.repository_owner }}" --password-stdin
+          fi
 
           # Login to additional registries from inputs.registrys
           while IFS= read -r line; do
@@ -108,15 +115,23 @@ jobs:
             VERSION="0.0.0"
           fi
 
-          TAGS="ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:${VERSION}"
-          TAGS+=$'\n'"ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest"
+          TAGS=""
+
+          # Add GHCR tags unless disabled
+          if [ "${{ inputs.disable-ghcr }}" != "true" ]; then
+            TAGS="ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:${VERSION}"
+            TAGS+=$'\n'"ghcr.io/${GITHUB_REPOSITORY_OWNER@L}/${{ inputs.image-name }}:latest"
+          fi
 
           # Build extra registry tags from inputs.registrys
           while IFS= read -r line; do
             [[ -z "$line" ]] && continue
             registry="${line##*@}"
             username="${line%%:*}"
-            TAGS+=$'\n'"${registry}/${username}/${{ inputs.image-name }}:${VERSION}"
+            if [ -n "$TAGS" ]; then
+              TAGS+=$'\n'
+            fi
+            TAGS+="${registry}/${username}/${{ inputs.image-name }}:${VERSION}"
             TAGS+=$'\n'"${registry}/${username}/${{ inputs.image-name }}:latest"
           done <<'REGISTRYS_EOF'
           ${{ inputs.registrys }}
