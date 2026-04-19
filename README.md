@@ -74,7 +74,7 @@ jobs:
 
 **Path**: `.github/workflows/docker-publish.yml`
 
-This workflow builds a multi-platform Docker image, tags it, and pushes it to GitHub Container Registry (GHCR) and optionally to Docker Hub.
+This workflow builds a multi-platform Docker image, tags it, and pushes it to one or more container registries. GitHub Container Registry (GHCR) is included by default and can be disabled. Additional registries (Docker Hub, Quay, etc.) are configured via the `registrys` input.
 
 #### Usage Example
 
@@ -89,24 +89,27 @@ jobs:
       server-binary-amd64: 'clash-rs-x86_64-unknown-linux-musl'
       server-binary-arm64: 'clash-rs-aarch64-unknown-linux-musl'
     secrets:
-      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
-      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      registrys: |
+        myuser:${{ secrets.DOCKERHUB_TOKEN }}@docker.io
+        myuser:${{ secrets.QUAY_TOKEN }}@quay.io
 ```
+
+> **GHCR** is always logged in automatically via `GITHUB_TOKEN`. Set `disable-ghcr: true` to opt out.
 
 #### Inputs
 
-| Name                  | Description                                            | Type   | Required | Default                     |
-| --------------------- | ------------------------------------------------------ | ------ | -------- | --------------------------- |
-| `docker-file`         | Path to the `Dockerfile`.                              | string | No       | `.github/Dockerfile`        |
-| `image-name`          | The base name for the Docker image.                    | string | No       | `bin`                       |
-| `platforms`           | A comma-separated list of platforms to build for.      | string | No       | `linux/amd64,linux/arm64`   |
-| `binary-dir`          | The directory where downloaded binary artifacts are stored. | string | No       | `./docker-bins`             |
-| `server-binary-amd64` | The filename of the amd64 binary.                      | string | No       | `bin-x86_64-linux-musl`   |
-| `server-binary-arm64` | The filename of the arm64 binary.                      | string | No       | `bin-aarch64-linux-musl`  |
+| Name                  | Description                                                        | Type    | Required | Default                     |
+| --------------------- | ------------------------------------------------------------------ | ------- | -------- | --------------------------- |
+| `disable-ghcr`        | Set to `true` to skip GHCR login and exclude GHCR tags             | boolean | No       | `false`                     |
+| `docker-file`         | Path to the `Dockerfile`.                                          | string  | No       | `.github/Dockerfile`        |
+| `image-name`          | The base name for the Docker image.                                | string  | No       | `bin`                       |
+| `platforms`           | A comma-separated list of platforms to build for.                  | string  | No       | `linux/amd64,linux/arm64`   |
+| `binary-dir`          | The directory where downloaded binary artifacts are stored.        | string  | No       | `./docker-bins`             |
+| `server-binary-amd64` | The filename of the amd64 binary.                                  | string  | No       | `bin-x86_64-linux-musl`     |
+| `server-binary-arm64` | The filename of the arm64 binary.                                  | string  | No       | `bin-aarch64-linux-musl`    |
 
 #### Secrets
 
-| Name                 | Description            | Required |
-| -------------------- | ---------------------- | -------- |
-| `dockerhub-username` | Docker Hub username.   | No       |
-| `dockerhub-token`    | Docker Hub access token. | No       |
+| Name        | Description                                                                      | Required |
+| ----------- | -------------------------------------------------------------------------------- | -------- |
+| `registrys` | Newline-separated list of registries: `username:password@registry`               | No       |
