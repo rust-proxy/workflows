@@ -124,13 +124,6 @@ jobs:
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
           echo "AWS_LC_SYS_PREBUILT_NASM=1" >> $GITHUB_ENV
 
-      - name: Start sccache server (shared UDS for cross container)
-        run: |
-          mkdir -p /tmp/sccache
-          SCCACHE_SERVER_UDS=/tmp/sccache.sock sccache --start-server
-        env:
-          SCCACHE_DIR: /tmp/sccache
-
       - name: Setup Sentry DSN
         run: |
           if [ -n "${{ secrets.sentry-dsn }}" ]; then
