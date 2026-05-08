@@ -67,10 +67,11 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
+          RELEASE_NOTES: ${{ steps.git-cliff.outputs.content }}
         run: |
           gh release create "$TAG_NAME" \
             --title "$TAG_NAME" \
-            --notes "${{ steps.git-cliff.outputs.content }}" \
+            --notes "$RELEASE_NOTES" \
             $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
             packages/* LICENSE*
 
@@ -78,17 +79,30 @@ jobs:
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete latest --cleanup-tag --yes --repo $GITHUB_REPOSITORY || true
+        run: |
+          gh release delete latest --cleanup-tag --yes --repo $GITHUB_REPOSITORY || true
+          git tag -d latest || true
+
+      - name: Generate changelog (unreleased)
+        if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
+        uses: orhun/git-cliff-action@v4
+        id: git-cliff-nightly
+        with:
+          config: ${{ inputs.cliff-config }}
+          args: --unreleased --strip header
+        env:
+          GITHUB_REPO: ${{ github.repository }}
 
       - name: Publish latest (nightly) release
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_NOTES: ${{ steps.git-cliff-nightly.outputs.content }}
         run: |
           gh release create latest \
             --title "latest" \
             --prerelease \
             --target ${{ github.sha }} \
-            --notes "Automated nightly release for ${{ github.sha }}" \
+            --notes "$RELEASE_NOTES" \
             $( [ "${{ inputs.publish-mode }}" = "draft" ] && echo "--draft" ) \
             packages/* LICENSE*
