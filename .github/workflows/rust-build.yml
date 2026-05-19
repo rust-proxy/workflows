@@ -37,6 +37,11 @@ on:
         required: false
         type: boolean
         default: false
+      enable-sccache:
+        description: 'Enable sccache for distributed compilation caching'
+        required: false
+        type: boolean
+        default: true
       only-clippy-tests-on-pr:
         description: 'If true, run clippy and tests only on pull_request events. If false, run clippy/tests on any event.'
         required: false
@@ -116,9 +121,11 @@ jobs:
           fetch-depth: 1
 
       - name: Run sccache-cache
+        if: inputs.enable-sccache
         uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Setup SCCache & AWS-LC-RS prebuilt NASM objects
+        if: inputs.enable-sccache
         run: |
           echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
