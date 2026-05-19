@@ -131,7 +131,7 @@ jobs:
           fi
 
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Itsusinn/rust-cache@master
         with:
           shared-key: ${{ inputs.cache-key-prefix }}-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           cache-directories: |
