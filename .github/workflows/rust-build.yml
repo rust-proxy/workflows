@@ -138,6 +138,12 @@ jobs:
             ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-
             ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-
 
+      - name: Install sccache
+        if: inputs.enable-sccache
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
+
       - name: Setup sccache (local disk mode)
         if: inputs.enable-sccache
         run: |
