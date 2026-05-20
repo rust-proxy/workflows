@@ -125,16 +125,53 @@ jobs:
           submodules: true
           fetch-depth: 1
 
-      - name: Run sccache-cache
+      # ── Sccache: restore/auto-save disk cache + local disk setup ──
+      - name: Determine sccache directory
         if: inputs.enable-sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
+        id: sccache-dir
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            echo "dir=/tmp/sccache" >> "$GITHUB_OUTPUT"
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            echo "dir=$HOME/.sccache" >> "$GITHUB_OUTPUT"
+          else
+            # Windows: bash $HOME returns MSYS2 path (/c/Users/...), use USERPROFILE
+            echo "dir=${USERPROFILE}/.sccache" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
 
-      - name: Setup SCCache & AWS-LC-RS prebuilt NASM objects
+      - name: Setup sccache cache
+        if: inputs.enable-sccache
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.sccache-dir.outputs.dir }}
+          # Unique key per run ensures cache is always saved at post step
+          key: ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-
+            ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-
+
+      - name: Install sccache
+        if: inputs.enable-sccache
+        uses: taiki-e/install-action@v2
+        with:
+          tool: sccache
+
+      - name: Setup sccache (local disk mode)
         if: inputs.enable-sccache
         run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
-          echo "AWS_LC_SYS_PREBUILT_NASM=1" >> $GITHUB_ENV
+          SCCACHE_DIR="${{ steps.sccache-dir.outputs.dir }}"
+          export SCCACHE_DIR
+          mkdir -p "$SCCACHE_DIR"
+          chmod -R u+w "$SCCACHE_DIR" 2>/dev/null || true
+          echo "SCCACHE_DIR=$SCCACHE_DIR" >> "$GITHUB_ENV"
+          echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
+          echo "AWS_LC_SYS_PREBUILT_NASM=1" >> "$GITHUB_ENV"
+          # Enable network host for cross containers to reach host services
+          echo "CROSS_CONTAINER_OPTS=--network host" >> "$GITHUB_ENV"
+          # Start sccache server on default port for host/native builds
+          sccache --start-server || echo "sccache server already running"
+        shell: bash
 
       - name: Setup Sentry DSN
         run: |
@@ -142,7 +179,9 @@ jobs:
             echo "SENTRY_DSN=${{ secrets.sentry-dsn }}" >> $GITHUB_ENV
           fi
 
+      # ── Rust cache (only when sccache disabled) ──
       - name: Setup Rust cache
+        if: ${{ !inputs.enable-sccache }}
         uses: Itsusinn/rust-cache@master
         with:
           shared-key: ${{ inputs.cache-key-prefix }}-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
@@ -206,7 +245,6 @@ jobs:
           command: test
           args: --all --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} -- --nocapture
         env:
-          CROSS_CONTAINER_OPTS: "--network host"
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
 
       - name: Prepare package args
@@ -235,6 +273,13 @@ jobs:
         env:
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
           CROSS_BUILD_ZIG: ${{ matrix.zig }}
+
+      #--------------------------------------------------
+      # Sccache Stats
+      #--------------------------------------------------
+      - name: Show sccache stats
+        if: inputs.enable-sccache
+        run: sccache --show-stats
 
       #--------------------------------------------------
       # Artifact Steps
