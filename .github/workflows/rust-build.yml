@@ -42,6 +42,11 @@ on:
         required: false
         type: boolean
         default: true
+      cache-targets:
+        description: 'Which build artifacts to cache: "true" (all), "release" (release only, smaller), or "false" (no target caching)'
+        required: false
+        type: string
+        default: 'release'
       only-clippy-tests-on-pr:
         description: 'If true, run clippy and tests only on pull_request events. If false, run clippy/tests on any event.'
         required: false
@@ -141,6 +146,7 @@ jobs:
         uses: Itsusinn/rust-cache@master
         with:
           shared-key: ${{ inputs.cache-key-prefix }}-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          cache-targets: ${{ inputs.cache-targets }}
           cache-directories: |
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
