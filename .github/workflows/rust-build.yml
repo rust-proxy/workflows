@@ -132,8 +132,11 @@ jobs:
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
             echo "dir=/tmp/sccache" >> "$GITHUB_OUTPUT"
-          else
+          elif [ "$RUNNER_OS" = "macOS" ]; then
             echo "dir=$HOME/.sccache" >> "$GITHUB_OUTPUT"
+          else
+            # Windows: bash $HOME returns MSYS2 path (/c/Users/...), use USERPROFILE
+            echo "dir=${USERPROFILE}/.sccache" >> "$GITHUB_OUTPUT"
           fi
         shell: bash
 
