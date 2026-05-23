@@ -126,14 +126,22 @@ jobs:
           fetch-depth: 1
 
       # ── Sccache: restore/auto-save disk cache + local disk setup ──
+      - name: Determine sccache directory
+        if: inputs.enable-sccache
+        id: sccache-dir
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            echo "dir=/tmp/sccache" >> "$GITHUB_OUTPUT"
+          else
+            echo "dir=$HOME/.sccache" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
       - name: Setup sccache cache
         if: inputs.enable-sccache
-        id: sccache-cache
         uses: actions/cache@v4
         with:
-          # `~` doesn't resolve correctly on Windows/macOS in actions/cache;
-# use explicit HOME from env context instead.
-path: ${{ runner.os == 'Linux' && '/tmp/sccache' || format('{0}/.sccache', env.HOME) }}
+          path: ${{ steps.sccache-dir.outputs.dir }}
           # Unique key per run ensures cache is always saved at post step
           key: ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
@@ -149,12 +157,7 @@ path: ${{ runner.os == 'Linux' && '/tmp/sccache' || format('{0}/.sccache', env.H
       - name: Setup sccache (local disk mode)
         if: inputs.enable-sccache
         run: |
-          if [ "$RUNNER_OS" = "Linux" ]; then
-            # /tmp/sccache is shared with cross containers via /tmp volume mount
-            SCCACHE_DIR="/tmp/sccache"
-          else
-            SCCACHE_DIR="$HOME/.sccache"
-          fi
+          SCCACHE_DIR="${{ steps.sccache-dir.outputs.dir }}"
           mkdir -p "$SCCACHE_DIR"
           chmod -R u+w "$SCCACHE_DIR" 2>/dev/null || true
           echo "SCCACHE_DIR=$SCCACHE_DIR" >> "$GITHUB_ENV"
