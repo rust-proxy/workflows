@@ -233,6 +233,10 @@ jobs:
           command: test
           args: --all --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} -- --nocapture
         env:
+          # Skip sccache during test on cross targets: sccache inside cross
+          # containers causes race conditions writing .d files to the shared
+          # target directory. Native targets (Windows, macOS) are fine.
+          RUSTC_WRAPPER: ${{ matrix.tool == 'cross' && '' || 'sccache' }}
           CROSS_CONTAINER_OPTS: "--network host"
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
 
