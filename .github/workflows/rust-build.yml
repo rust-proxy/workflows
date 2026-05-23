@@ -261,6 +261,13 @@ jobs:
           CROSS_BUILD_ZIG: ${{ matrix.zig }}
 
       #--------------------------------------------------
+      # Sccache Stats
+      #--------------------------------------------------
+      - name: Show sccache stats
+        if: inputs.enable-sccache
+        run: sccache --show-stats
+
+      #--------------------------------------------------
       # Artifact Steps
       #--------------------------------------------------
       - name: Prepare binary artifacts
