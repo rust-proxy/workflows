@@ -183,7 +183,9 @@ jobs:
         id: sccache-cache
         uses: actions/cache@v4
         with:
-          path: ${{ runner.os == 'Linux' && '/tmp/sccache' || '~/.sccache' }}
+          # `~` doesn't resolve correctly on Windows/macOS in actions/cache;
+# use explicit HOME from env context instead.
+path: ${{ runner.os == 'Linux' && '/tmp/sccache' || format('{0}/.sccache', env.HOME) }}
           # Unique key per run ensures cache is always saved at post step
           key: ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
