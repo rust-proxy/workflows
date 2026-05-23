@@ -210,10 +210,9 @@ jobs:
           echo "SCCACHE_DIR=$SCCACHE_DIR" >> "$GITHUB_ENV"
           echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
           echo "AWS_LC_SYS_PREBUILT_NASM=1" >> "$GITHUB_ENV"
-          echo "SCCACHE_SERVER_PORT=14266" >> "$GITHUB_ENV"
-          # Enable network host for cross containers so they can reach host
+          # Enable network host for cross containers to reach host services
           echo "CROSS_CONTAINER_OPTS=--network host" >> "$GITHUB_ENV"
-          # Start sccache server on dedicated port for cross container access
+          # Start sccache server on default port for host/native builds
           sccache --start-server || echo "sccache server already running"
         shell: bash
 
