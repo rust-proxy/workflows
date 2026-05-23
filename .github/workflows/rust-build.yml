@@ -183,7 +183,7 @@ jobs:
         id: sccache-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/sccache
+          path: /tmp/sccache
           # Unique key per run ensures cache is always saved at post step
           key: ${{ inputs.cache-key-prefix }}-sccache-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}-${{ github.run_id }}
           restore-keys: |
@@ -199,7 +199,7 @@ jobs:
       - name: Setup sccache (local disk mode)
         if: inputs.enable-sccache
         run: |
-          SCCACHE_DIR="$HOME/.cache/sccache"
+          SCCACHE_DIR="/tmp/sccache"
           mkdir -p "$SCCACHE_DIR"
           # Fix permissions on restored cache — actions/cache can restore with
           # wrong ownership/permissions, causing "Permission denied" on subdirs.
