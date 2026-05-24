@@ -161,6 +161,7 @@ jobs:
         if: inputs.enable-sccache
         run: |
           SCCACHE_DIR="${{ steps.sccache-dir.outputs.dir }}"
+          export SCCACHE_DIR
           mkdir -p "$SCCACHE_DIR"
           chmod -R u+w "$SCCACHE_DIR" 2>/dev/null || true
           echo "SCCACHE_DIR=$SCCACHE_DIR" >> "$GITHUB_ENV"
