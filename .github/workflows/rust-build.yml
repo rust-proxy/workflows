@@ -42,6 +42,11 @@ on:
         required: false
         type: boolean
         default: true
+      sccache-max-size:
+        description: 'Maximum size of sccache cache (e.g. 2G, 500M)'
+        required: false
+        type: string
+        default: '1G'
       cache-targets:
         description: 'Which build artifacts to cache: "true" (all), "release" (release only, smaller), or "false" (no target caching)'
         required: false
@@ -165,8 +170,10 @@ jobs:
           mkdir -p "$SCCACHE_DIR"
           chmod -R u+w "$SCCACHE_DIR" 2>/dev/null || true
           echo "SCCACHE_DIR=$SCCACHE_DIR" >> "$GITHUB_ENV"
+          echo "SCCACHE_CACHE_SIZE=${{ inputs.sccache-max-size }}" >> "$GITHUB_ENV"
           echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
           echo "AWS_LC_SYS_PREBUILT_NASM=1" >> "$GITHUB_ENV"
+
           # Enable network host for cross containers to reach host services
           echo "CROSS_CONTAINER_OPTS=--network host" >> "$GITHUB_ENV"
           # Start sccache server on default port for host/native builds
@@ -198,7 +205,7 @@ jobs:
           toolchain: ${{ matrix.toolchain || inputs.rust-toolchain }}
           targets: ${{ matrix.build-std && 'x86_64-unknown-linux-gnu' || matrix.target }}
           components: ${{ matrix.components || matrix.build-std && 'rustfmt,clippy,rust-src' || 'rustfmt, clippy' }}
-          
+
       - uses: rui314/setup-mold@v1
         if: matrix.mold
         with:
