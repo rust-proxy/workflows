@@ -52,6 +52,11 @@ on:
         required: false
         type: string
         default: 'release'
+      profile:
+        description: 'Custom Cargo profile for release builds (lower priority than matrix.profile). Defaults to --release when unset.'
+        required: false
+        type: string
+        default: ''
       only-clippy-tests-on-pr:
         description: 'If true, run clippy and tests only on pull_request events. If false, run clippy/tests on any event.'
         required: false
@@ -314,7 +319,7 @@ path: ${{ runner.os == 'Linux' && '/tmp/sccache' || format('{0}/.sccache', env.H
         with:
           tool: ${{ matrix.tool }}
           command: build
-          args: ${{ steps.pkgargs.outputs.PKG_ARGS }} --release --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} --timings
+          args: ${{ steps.pkgargs.outputs.PKG_ARGS }} ${{ (matrix.profile || inputs.profile) && format('--profile {0}', matrix.profile || inputs.profile) || '--release' }} --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} --timings
         env:
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
           CROSS_BUILD_ZIG: ${{ matrix.zig }}
@@ -336,7 +341,8 @@ path: ${{ runner.os == 'Linux' && '/tmp/sccache' || format('{0}/.sccache', env.H
           mkdir -p artifacts
           IFS=',' read -ra PACKAGES <<< "${{ inputs.packages }}"
           for package in "${PACKAGES[@]}"; do
-            source_file="target/${{ matrix.target }}/release/${package}${{ matrix.postfix }}"
+            profile_dir="${{ matrix.profile || inputs.profile || 'release' }}"
+            source_file="target/${{ matrix.target }}/${profile_dir}/${package}${{ matrix.postfix }}"
             target_file="artifacts/${package}-${{ matrix.release-name || matrix.target }}${{ matrix.postfix }}"
             cp "$source_file" "$target_file"
           done
