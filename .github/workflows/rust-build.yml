@@ -232,6 +232,24 @@ jobs:
           echo "Using toolchain: ${{ matrix.toolchain || inputs.rust-toolchain }}"
           echo "Building packages: ${{ inputs.packages }}"
 
+      # Warm the cargo cache before building. `cross` runs `cargo metadata`
+      # internally, which must fetch any git dependencies; a transient network
+      # blip there aborts the whole build ("unable to get metadata for package").
+      # Pre-fetching with retries populates ~/.cargo so cross reads from cache.
+      - name: Pre-fetch dependencies (retry)
+        shell: bash
+        run: |
+          n=0
+          until cargo fetch ${{ matrix.target && format('--target {0}', matrix.target) || '' }}; do
+            n=$((n + 1))
+            if [ "$n" -ge 5 ]; then
+              echo "cargo fetch failed after $n attempts"
+              exit 1
+            fi
+            echo "cargo fetch attempt $n failed; retrying in $((n * 5))s..."
+            sleep $((n * 5))
+          done
+
       #--------------------------------------------------
       # Code Quality Steps
       #--------------------------------------------------
