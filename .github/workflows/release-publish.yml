@@ -25,6 +25,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      # git-cliff's GitHub integration reads pull requests for contributor/PR
+      # enrichment; without this the token (scoped to none-by-default once any
+      # permission is set) gets HTTP 403 on /pulls.
+      pull-requests: read
     steps:
       #--------------------------------------------------
       # Setup Steps
