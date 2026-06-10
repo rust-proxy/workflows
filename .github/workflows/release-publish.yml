@@ -58,6 +58,9 @@ jobs:
           args: --latest --strip header
         env:
           GITHUB_REPO: ${{ github.repository }}
+          # git-cliff's GitHub integration (contributors / PR numbers) calls the
+          # GitHub API, which is rate-limited to 403 when unauthenticated.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       #--------------------------------------------------
       # Release Publishing
@@ -92,6 +95,9 @@ jobs:
           args: --unreleased --strip header
         env:
           GITHUB_REPO: ${{ github.repository }}
+          # git-cliff's GitHub integration (contributors / PR numbers) calls the
+          # GitHub API, which is rate-limited to 403 when unauthenticated.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Publish latest (nightly) release
         if: ${{ inputs.create-latest-on-push && !startsWith(github.ref, 'refs/tags/v') }}
