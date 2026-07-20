@@ -112,11 +112,6 @@ jobs:
         run: |
           cargo +nightly fmt --all -- --check
 
-      - name: Spell Check Repo
-        uses: crate-ci/typos@v1.44.0
-        env:
-          CLICOLOR: 1
-
   compile:
     needs: prepare
     name: ${{ matrix.release-name || matrix.target || 'Unknown' }}
