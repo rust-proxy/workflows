@@ -84,7 +84,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          submodules: true
+          submodules: recursive
           fetch-depth: 1
 
       - name: Install toml2json and jaq
@@ -130,7 +130,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
         with:
-          submodules: true
+          submodules: recursive
           fetch-depth: 1
 
       # ── Sccache: restore/auto-save disk cache + local disk setup ──
@@ -192,7 +192,7 @@ jobs:
       # ── Rust cache (only when sccache disabled) ──
       - name: Setup Rust cache
         if: ${{ !inputs.enable-sccache }}
-        uses: Itsusinn/rust-cache@master
+        uses: Swatinem/rust-cache@v2
         with:
           shared-key: ${{ inputs.cache-key-prefix }}-${{ matrix.release-name || matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           cache-targets: ${{ inputs.cache-targets }}
