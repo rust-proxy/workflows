@@ -67,6 +67,14 @@ jobs:
 | `cliff-config`          | Path to the `git-cliff` configuration file for changelog generation.           | string  | No       | `.github/cliff.toml` |
 | `create-latest-on-push` | If `true`, it will create or update a `latest` pre-release.                    | boolean | No       | `false`           |
 | `publish-mode`          | Set to `draft` to create draft releases instead of publishing them immediately. | string  | No       | `publish`         |
+| `target-repository`     | Target repository to publish release to (format: `owner/repo`). Defaults to the current repository. | string | No | `''` |
+| `target-commitish`      | Target commit SHA or branch name for the release tag in target repository.     | string  | No       | `''`              |
+
+#### Secrets
+
+| Name    | Description                                                                                     | Required |
+| ------- | ----------------------------------------------------------------------------------------------- | -------- |
+| `token` | GitHub token or PAT with write access to target repository. Defaults to `secrets.GITHUB_TOKEN`. | No       |
 
 ---
 
