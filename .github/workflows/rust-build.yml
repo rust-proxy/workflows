@@ -22,6 +22,10 @@ on:
         required: false
         type: boolean
         default: true
+      cross-docker-tests:
+        description: 'Grant Linux cross test containers access to the mounted Docker socket'
+        type: boolean
+        default: false
       cache-key-prefix:
         description: 'Prefix for cache key to avoid collisions'
         required: false
@@ -265,6 +269,16 @@ jobs:
       #--------------------------------------------------
       # Build & Test Steps
       #--------------------------------------------------
+      - name: Get Docker socket group for cross tests
+        id: docker-socket
+        if: >-
+          inputs.cross-docker-tests && runner.os == 'Linux' && matrix.tool == 'cross' &&
+          inputs.run-tests && !matrix.skip-test &&
+          (!inputs.only-clippy-tests-on-pr || github.event_name == 'pull_request')
+        run: |
+          gid=$(stat -c '%g' /var/run/docker.sock)
+          echo "opts=${CROSS_CONTAINER_OPTS:+$CROSS_CONTAINER_OPTS }--group-add $gid" >> "$GITHUB_OUTPUT"
+
       - name: Run tests
         uses: clechasseur/rs-cargo@v4
         if: ${{ ((inputs.only-clippy-tests-on-pr && github.event_name == 'pull_request') || (!inputs.only-clippy-tests-on-pr)) && inputs.run-tests != false && !matrix.skip-test }}
@@ -273,6 +287,7 @@ jobs:
           command: test
           args: --all --target ${{ matrix.target }} ${{ matrix.build-std && '-Z build-std=std,panic_abort' || '' }} ${{ matrix.extra-args }} -- --nocapture
         env:
+          CROSS_CONTAINER_OPTS: ${{ steps.docker-socket.outputs.opts || env.CROSS_CONTAINER_OPTS }}
           RUSTFLAGS: ${{ matrix.rustflags }} ${{ inputs.rustflags }}
 
       - name: Prepare package args

@@ -35,6 +35,7 @@ jobs:
 | `packages`                | Comma-separated list of package names to build.                                                         | string  | Yes      |                      |
 | `target-config-file`      | Path to the TOML file containing the build matrix targets.                                              | string  | No       | `.github/target.toml`|
 | `run-tests`               | A global flag to enable or disable tests. Can be overridden by `skip-test` in the matrix.               | boolean | No       | `true`               |
+| `cross-docker-tests`      | Add the mounted Docker socket's group to Linux cross test containers.                                  | boolean | No       | `false`              |
 | `cache-key-prefix`        | A prefix for the cache key to prevent collisions if using this workflow multiple times in one job.      | string  | No       | `rust-build`         |
 | `rustflags`               | Additional RUSTFLAGS to pass to the compiler for all targets.                                           | string  | No       | `''`                 |
 | `enable-tmate`            | If `true`, starts a tmate session on failure for live debugging.                                        | boolean | No       | `false`              |
